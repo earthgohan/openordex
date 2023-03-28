@@ -1,3 +1,68 @@
+// import { Signer } from "@walletconnect/sign-client";
+// import * as encoding from "@walletconnect/encoding";
+// import QRCodeModal from "@walletconnect/qrcode-modal";
+async function SignClient() {
+    alert('hi')
+    console.log('openordex.org')
+    async function createSignClient(_uri) {
+        signClient = await SignClient.init({
+            logger: "debug",
+            projectId: "57c77ec18fe36f3fb85def44e62eb872",
+            metadata: {
+                description: "WC2 Dapp",
+                url: "http://localhost:3000/",
+                icons: ["https://firebasestorage.googleapis.com/v0/b/earthwallet-1f3ab.appspot.com/o/earthwallet%2Ficons%2Ficon-512.png?alt=media&token=00e9ca3a-9346-4786-9d65-ac29eb560c2a"],
+                name: "WC2Dapp",
+            },
+        });
+        console.log(_uri, "signClientv2");
+        if (_uri) {
+            const uri = _uri;
+            await signClient.pair({ uri });
+        }
+        signClient.on("session_update", ({ topic, params }) => {
+            const { namespaces } = params;
+            const _session = signClient.session.get(topic);
+            // Overwrite the `namespaces` of the existing session with the incoming one.
+            const updatedSession = { ..._session, namespaces };
+            // Integrate the updated session state into your dapp state.
+            console.log({ updatedSession });
+        });
+
+        return signClient;
+    }
+
+    const signClient = await createSignClient();
+    const { uri, approval } = init.signClient.connect({
+        // Optionally: pass a known prior pairing (e.g. from `signClient.core.pairing.getPairings()`) to skip the `uri` step.
+        //pairingTopic: init?.signClient?.core.pairing.getPairings()[0] ? init?.signClient?.core.pairing.getPairings()[1].topic : null,
+        // Provide the namespaces and chains (e.g. `eip155` for EVM-based chains) we want to use in this session.
+        requiredNamespaces: {
+            eip155: {
+                methods: [
+                    "eth_sendTransaction",
+                    "eth_signTransaction",
+                    "eth_sign",
+                    "personal_sign",
+                    "eth_signTypedData",
+                ],
+                chains: ["eip155:1"],
+                events: ["chainChanged", "accountsChanged"],
+            },
+        },
+    });
+
+    // Open QRCode modal if a URI was returned (i.e. we're not connecting an existing pairing).
+    if (uri) {
+        QRCodeModal.open(uri, () => {
+            console.log("EVENT", "QR Code Modal closed");
+        });
+    }
+
+}
+
+
+
 const isProduction = !location.href.includes('signet')
 const ordinalsExplorerUrl = isProduction ? "https://ordinals.com" : "https://explorer-signet.openordex.org"
 const baseMempoolUrl = isProduction ? "https://mempool.space" : "https://mempool.space/signet"
@@ -17,6 +82,10 @@ const wallets = [
     {
         name: 'Unisat',
         url: 'https://unisat.io/download',
+    },
+    {
+        name: 'EarthWallet',
+        url: 'https://earthwallet.io',
     },
     {
         name: 'Hiro',
@@ -312,7 +381,7 @@ async function getInscriptionIdByNumber(inscriptionNumber) {
 
 async function getCollection(collectionSlug) {
     if (collectionSlug == 'under-1k') {
-        return await fetch(`/static/under-1k.json`).then(response => response.json())
+        return import(`/static/under-1k.json`).then(response => response.default)
     }
 
     const [meta, inscriptions] = await Promise.all([
@@ -329,8 +398,8 @@ async function getCollection(collectionSlug) {
 }
 
 async function getCollections() {
-    return fetch(`/static/collections.json`)
-        .then(response => response.json())
+    return import(`/static/collections.json`)
+        .then(response => response.default)
         .then(collections => collections.sort((a, b) => 0.5 - Math.random()))
 }
 
